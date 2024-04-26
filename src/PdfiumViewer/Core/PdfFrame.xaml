@@ -6,8 +6,20 @@
              xmlns:local="clr-namespace:PdfiumViewer.Core"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <Storyboard x:Key="blinkAnimation">
+            <DoubleAnimation Storyboard.TargetName="blinkRectangle"
+                                 Storyboard.TargetProperty="Opacity"
+                                 From="0"
+                                 To="1"
+                                 RepeatBehavior="10x"
+                                 AutoReverse="True"
+                                 Duration="0:0:0.2"/>
+        </Storyboard>
+    </UserControl.Resources>
     <Grid>
         <Image x:Name="image"/>
+        <Rectangle x:Name="blinkRectangle" Stroke="Red" StrokeThickness="3" IsHitTestVisible="False" Opacity="0" />
         <Canvas x:Name="canvas"/>
     </Grid>
 </UserControl>

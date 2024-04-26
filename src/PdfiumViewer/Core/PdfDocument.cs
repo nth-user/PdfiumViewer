@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Drawing;
+using System.Windows;
 using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.IO;
 using System.Windows.Interop;
 using PdfiumViewer.Drawing;
 using PdfiumViewer.Enums;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
 
 namespace PdfiumViewer.Core
 {
@@ -19,7 +21,7 @@ namespace PdfiumViewer.Core
     {
         private bool _disposed;
         private PdfFile _file;
-        private readonly List<SizeF> _pageSizes;
+        private readonly List<Size> _pageSizes;
 
         /// <summary>
         /// Initializes a new instance of the PdfDocument class with the provided path.
@@ -124,15 +126,15 @@ namespace PdfiumViewer.Core
         /// <summary>
         /// Size of each page in the PDF document.
         /// </summary>
-        public IList<SizeF> PageSizes { get; private set; }
+        public IList<Size> PageSizes { get; private set; }
 
         private PdfDocument(Stream stream, string password)
         {
             _file = new PdfFile(stream, password);
-            _pageSizes = new List<SizeF>(PageCount);
+            _pageSizes = new List<Size>(PageCount);
             for (var i = 0; i < PageCount; i++)
-                _pageSizes.Add(new SizeF());
-            PageSizes = new ReadOnlyCollection<SizeF>(_pageSizes);
+                _pageSizes.Add(Size.Empty);
+            PageSizes = new ReadOnlyCollection<Size>(_pageSizes);
         }
 
         /// <summary>
@@ -144,7 +146,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="bounds">Bounds to render the page in.</param>
         /// <param name="forPrinting">Render the page for printing.</param>
-        public void Render(int page, Graphics graphics, float dpiX, float dpiY, Rectangle bounds, bool forPrinting)
+        public void Render(int page, System.Drawing.Graphics graphics, float dpiX, float dpiY, Rect bounds, bool forPrinting)
         {
             Render(page, graphics, dpiX, dpiY, bounds, forPrinting ? PdfRenderFlags.ForPrinting : PdfRenderFlags.None);
         }
@@ -158,7 +160,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="bounds">Bounds to render the page in.</param>
         /// <param name="flags">Flags used to influence the rendering.</param>
-        public void Render(int page, Graphics graphics, float dpiX, float dpiY, Rectangle bounds, PdfRenderFlags flags)
+        public void Render(int page, System.Drawing.Graphics graphics, float dpiX, float dpiY, Rect bounds, PdfRenderFlags flags)
         {
             if (graphics == null)
                 throw new ArgumentNullException(nameof(graphics));
@@ -185,13 +187,13 @@ namespace PdfiumViewer.Core
                 }
 
                 var point = new NativeMethods.POINT();
-                NativeMethods.SetViewportOrgEx(dc, bounds.X, bounds.Y, out point);
+                NativeMethods.SetViewportOrgEx(dc, (int)bounds.X, (int)bounds.Y, out point);
 
                 var success = _file.RenderPDFPageToDC(
                     page,
                     dc,
                     (int)dpiX, (int)dpiY,
-                    0, 0, bounds.Width, bounds.Height,
+                    0, 0, (int)bounds.Width, (int)bounds.Height,
                     FlagsToFPDFFlags(flags)
                 );
 
@@ -214,7 +216,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="forPrinting">Render the page for printing.</param>
         /// <returns>The rendered image.</returns>
-        public Image Render(int page, float dpiX, float dpiY, bool forPrinting)
+        public ImageSource Render(int page, float dpiX, float dpiY, bool forPrinting)
         {
             var size = PageSizes[page];
 
@@ -229,7 +231,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="flags">Flags used to influence the rendering.</param>
         /// <returns>The rendered image.</returns>
-        public Image Render(int page, float dpiX, float dpiY, PdfRenderFlags flags)
+        public ImageSource Render(int page, float dpiX, float dpiY, PdfRenderFlags flags)
         {
             var size = PageSizes[page];
 
@@ -246,7 +248,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="forPrinting">Render the page for printing.</param>
         /// <returns>The rendered image.</returns>
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, bool forPrinting)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, bool forPrinting)
         {
             return Render(page, width, height, dpiX, dpiY, forPrinting ? PdfRenderFlags.ForPrinting : PdfRenderFlags.None);
         }
@@ -261,7 +263,7 @@ namespace PdfiumViewer.Core
         /// <param name="dpiY">Vertical DPI.</param>
         /// <param name="flags">Flags used to influence the rendering.</param>
         /// <returns>The rendered image.</returns>
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, PdfRenderFlags flags)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, PdfRenderFlags flags)
         {
             return Render(page, width, height, dpiX, dpiY, 0, flags);
         }
@@ -277,7 +279,7 @@ namespace PdfiumViewer.Core
         /// <param name="rotate">Rotation.</param>
         /// <param name="flags">Flags used to influence the rendering.</param>
         /// <returns>The rendered image.</returns>
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, PdfRotation rotate, PdfRenderFlags flags)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, PdfRotation rotate, PdfRenderFlags flags)
         {
             if (_disposed)
                 throw new ObjectDisposedException(GetType().Name);
@@ -288,10 +290,10 @@ namespace PdfiumViewer.Core
                 height = height * (int)dpiY / 72;
             }
 
-            var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            var bitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             bitmap.SetResolution(dpiX, dpiY);
 
-            var data = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadWrite, bitmap.PixelFormat);
+            var data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, width, height), ImageLockMode.ReadWrite, bitmap.PixelFormat);
 
             try
             {
@@ -326,7 +328,13 @@ namespace PdfiumViewer.Core
                 bitmap.UnlockBits(data);
             }
 
-            return bitmap;
+            // Convert System.Drawing.Bitmap to System.Windows.Media.Imaging.BitmapSource
+            var bitmapSource = Imaging.CreateBitmapSourceFromHBitmap(bitmap.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+
+            // Clean up
+            bitmap.Dispose();
+
+            return bitmapSource;
         }
 
         private NativeMethods.FPDF FlagsToFPDFFlags(PdfRenderFlags flags)
@@ -440,7 +448,7 @@ namespace PdfiumViewer.Core
         /// <param name="page">The page number where the point is from.</param>
         /// <param name="point">The point to convert.</param>
         /// <returns>The converted point.</returns>
-        public PointF PointToPdf(int page, Point point)
+        public Point PointToPdf(int page, Point point)
         {
             return _file.PointToPdf(page, point);
         }
@@ -451,7 +459,7 @@ namespace PdfiumViewer.Core
         /// <param name="page">The page number where the point is from.</param>
         /// <param name="point">The point to convert.</param>
         /// <returns>The converted point.</returns>
-        public Point PointFromPdf(int page, PointF point)
+        public Point PointFromPdf(int page, Point point)
         {
             return _file.PointFromPdf(page, point);
         }
@@ -462,7 +470,7 @@ namespace PdfiumViewer.Core
         /// <param name="page">The page where the rectangle is from.</param>
         /// <param name="rect">The rectangle to convert.</param>
         /// <returns>The converted rectangle.</returns>
-        public RectangleF RectangleToPdf(int page, Rectangle rect)
+        public Rect RectangleToPdf(int page, Rect rect)
         {
             return _file.RectangleToPdf(page, rect);
         }
@@ -473,7 +481,7 @@ namespace PdfiumViewer.Core
         /// <param name="page">The page where the rectangle is from.</param>
         /// <param name="rect">The rectangle to convert.</param>
         /// <returns>The converted rectangle.</returns>
-        public Rectangle RectangleFromPdf(int page, RectangleF rect)
+        public Rect RectangleFromPdf(int page, Rect rect)
         {
             return _file.RectangleFromPdf(page, rect);
         }
@@ -548,7 +556,7 @@ namespace PdfiumViewer.Core
             return _file.GetInformation();
         }
 
-        public SizeF GetPageSize(int pageNo)
+        public Size GetPageSize(int pageNo)
         {
             if (_pageSizes.Count > pageNo && pageNo >= 0)
             {

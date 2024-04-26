@@ -1,48 +1,49 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Drawing.Printing;
 using System.IO;
 using PdfiumViewer.Core;
 using PdfiumViewer.Drawing;
 using PdfiumViewer.Enums;
+using System.Windows;
+using System.Windows.Media;
 
 namespace PdfiumViewer
 {
     // ScrollPanel.PdfDocument
     public partial class ScrollPanel
     {
-        public void Render(int page, Graphics graphics, float dpiX, float dpiY, Rectangle bounds, bool forPrinting)
+        public void Render(int page, System.Drawing.Graphics graphics, float dpiX, float dpiY, Rect bounds, bool forPrinting)
         {
             Document.Render(page, graphics, dpiX, dpiY, bounds, forPrinting);
         }
 
-        public void Render(int page, Graphics graphics, float dpiX, float dpiY, Rectangle bounds, PdfRenderFlags flags)
+        public void Render(int page, System.Drawing.Graphics graphics, float dpiX, float dpiY, Rect bounds, PdfRenderFlags flags)
         {
             Document.Render(page, graphics, dpiX, dpiY, bounds, flags);
         }
 
-        public Image Render(int page, float dpiX, float dpiY, bool forPrinting)
+        public ImageSource Render(int page, float dpiX, float dpiY, bool forPrinting)
         {
             return Document.Render(page, dpiX, dpiY, forPrinting);
         }
 
-        public Image Render(int page, float dpiX, float dpiY, PdfRenderFlags flags)
+        public ImageSource Render(int page, float dpiX, float dpiY, PdfRenderFlags flags)
         {
             return Document.Render(page, dpiX, dpiY, flags);
         }
 
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, bool forPrinting)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, bool forPrinting)
         {
             return Document.Render(page, width, height, dpiX, dpiY, forPrinting);
         }
 
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, PdfRenderFlags flags)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, PdfRenderFlags flags)
         {
             return Document.Render(page, width, height, dpiX, dpiY, flags);
         }
 
-        public Image Render(int page, int width, int height, float dpiX, float dpiY, PdfRotation rotate, PdfRenderFlags flags)
+        public ImageSource Render(int page, int width, int height, float dpiX, float dpiY, PdfRotation rotate, PdfRenderFlags flags)
         {
             return Document.Render(page, width, height, dpiX, dpiY, rotate, flags);
         }
@@ -123,28 +124,28 @@ namespace PdfiumViewer
             return Document?.GetTextBounds(textSpan);
         }
 
-        public PointF PointToPdf(int page, Point point)
+        public Point PointToPdf(int page, Point point)
         {
             return Document.PointToPdf(page, point);
         }
 
-        public Point PointFromPdf(int page, PointF point)
+        public Point PointFromPdf(int page, Point point)
         {
             return Document.PointFromPdf(page, point);
         }
 
-        public RectangleF RectangleToPdf(int page, Rectangle rect)
+        public Rect RectangleToPdf(int page, Rect rect)
         {
             return Document.RectangleToPdf(page, rect);
         }
 
-        public Rectangle RectangleFromPdf(int page, RectangleF rect)
+        public Rect RectangleFromPdf(int page, Rect rect)
         {
             return Document.RectangleFromPdf(page, rect);
         }
 
 
-        public void GotoPage(int page)
+        public PdfFrame GotoPage(int page)
         {
             if (IsDocumentLoaded)
             {
@@ -169,24 +170,27 @@ namespace PdfiumViewer
                     }
                 }
 
-                ScrollToPage(PageNo);
+                return ScrollToPage(PageNo);
             }
+            return null;
         }
-        public void NextPage()
+        public PdfFrame NextPage()
         {
             if (IsDocumentLoaded)
             {
                 var extentVal = PagesDisplayMode == PdfViewerPagesDisplayMode.BookMode ? 2 : 1;
-                GotoPage(Math.Min(Math.Max(PageNo + extentVal, 0), PageCount - extentVal));
+                return GotoPage(Math.Min(Math.Max(PageNo + extentVal, 0), PageCount - extentVal));
             }
+            return null;
         }
-        public void PreviousPage()
+        public PdfFrame PreviousPage()
         {
             if (IsDocumentLoaded)
             {
                 var extentVal = PagesDisplayMode == PdfViewerPagesDisplayMode.BookMode ? 2 : 1;
-                GotoPage(Math.Min(Math.Max(PageNo - extentVal, 0), PageCount - extentVal));
+                return GotoPage(Math.Min(Math.Max(PageNo - extentVal, 0), PageCount - extentVal));
             }
+            return null;
         }
     }
 }

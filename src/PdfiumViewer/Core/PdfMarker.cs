@@ -1,51 +1,78 @@
 ﻿using System;
-using System.Drawing;
+using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using PdfiumViewer.Drawing;
-using Color = System.Windows.Media.Color;
-using Pen = System.Windows.Media.Pen;
+using System.Windows.Shapes;
 
 namespace PdfiumViewer.Core
 {
     public class PdfMarker : IPdfMarker
     {
         public int Page { get; }
-        public RectangleF Bounds { get; }
-        public Color Color { get; }
-        public Color BorderColor { get; }
-        public float BorderWidth { get; }
+        public Point[] Bounds { get; }
+        public Brush Fill { get; }
+        public Brush Stroke { get; }
+        public double StrokeThickness { get; }
 
-        public PdfMarker(int page, RectangleF bounds, Color color)
-            : this(page, bounds, color, Colors.Transparent, 0)
+        public event PdfMarkerClickedEventHandler Clicked;
+
+        public PdfMarker(int page, Point[] bounds, Brush fill) : this(page, bounds, fill, Brushes.Transparent, 0)
         {
         }
 
-        public PdfMarker(int page, RectangleF bounds, Color color, Color borderColor, float borderWidth)
+        public PdfMarker(int page, Point[] bounds, Brush fill, Brush stroke, double strokeThickness)
         {
             Page = page;
             Bounds = bounds;
-            Color = color;
-            BorderColor = borderColor;
-            BorderWidth = borderWidth;
+            Fill = fill;
+            Stroke = stroke;
+            StrokeThickness = strokeThickness;
         }
 
-        public void Draw(PdfRenderer renderer, DrawingContext graphics)
+        public IEnumerable<UIElement> Draw(PdfFrame frame)
         {
-            if (renderer == null)
-                throw new ArgumentNullException(nameof(renderer));
-            if (graphics == null)
-                throw new ArgumentNullException(nameof(graphics));
+            if (frame == null)
+                throw new ArgumentNullException(nameof(frame));
 
-            Rect bounds = renderer.BoundsFromPdf(new PdfRectangle(Page, Bounds));
-            var brush = new SolidColorBrush(Color) { Opacity = .8 };
-            var pen = new Pen(new SolidColorBrush(BorderColor) { Opacity = .8 }, BorderWidth);
-            graphics.DrawRectangle(brush, null, bounds);
-
-            if (BorderWidth > 0)
+            var rect = frame.BoundsToFrame(Bounds);
+            var rectangle = new Rectangle
             {
-                graphics.DrawRectangle(null, pen, bounds);
+                Width = rect.Width,
+                Height = rect.Height,
+                Fill = Fill,
+                Stroke = Stroke,
+                StrokeThickness = StrokeThickness,
+            };
+            Canvas.SetTop(rectangle, rect.Top);
+            Canvas.SetLeft(rectangle, rect.Left);
+            if(Clicked != null)
+            {
+                rectangle.Cursor = Cursors.Arrow;
+                rectangle.MouseDown += Rectangle_MouseDown;
+                rectangle.MouseEnter += Rectangle_MouseEnter;
+                rectangle.MouseLeave += Rectangle_MouseLeave;
             }
+            return new[] { rectangle };
         }
+
+        private void Rectangle_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            Clicked?.Invoke(this, e);
+        }
+
+        private static void Rectangle_MouseLeave(object sender, MouseEventArgs e)
+        {
+            var rectangle = (Rectangle)sender;
+            rectangle.StrokeThickness -= 2;
+        }
+
+        private static void Rectangle_MouseEnter(object sender, MouseEventArgs e)
+        {
+            var rectangle = (Rectangle)sender;
+            rectangle.StrokeThickness += 2;
+        }
+        public delegate void PdfMarkerClickedEventHandler(object sender, MouseEventArgs e);
     }
 }

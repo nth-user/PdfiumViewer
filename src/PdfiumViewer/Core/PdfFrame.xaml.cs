@@ -12,6 +12,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
@@ -23,64 +24,98 @@ namespace PdfiumViewer.Core
     /// </summary>
     public partial class PdfFrame : UserControl
     {
-        public PdfDocument Document { get; }
+        public PdfRenderer Renderer { get; }
+        public PdfDocument Document => Renderer.Document;
         public int PageIndex { get; private set; }
         public bool IsRendered { get; private set; }
-
-        public IReadOnlyList<PdfPageLink> Links { get; private set; }
         private PdfFrame()
         {
             InitializeComponent();
         }
 
-        public PdfFrame(PdfDocument document) : this()
+        public PdfFrame(PdfRenderer renderer) : this()
         {
-            Document = document;
+            Renderer = renderer;
         }
         public bool SetPage(int i)
         {
             if(PageIndex != i)
             {
                 PageIndex = i;
-                Links = Document.GetPageLinks(i);
+                StopBlinking();
+                IsRendered = false;
                 return true;
             }
             return false;
         }
 
-        public BitmapImage Render(int dpi, PdfRotation rotation, PdfRenderFlags flags)
+        public ImageSource Render(int dpi, PdfRotation rotation, PdfRenderFlags flags)
         {
-            var bitmap = Document.Render(PageIndex, (int)Width, (int)Height, dpi, dpi, rotation, flags);
-            BitmapImage bitmapImage;
-            using (var memory = new MemoryStream())
-            {
-                bitmap.Save(memory, ImageFormat.Png);
-                memory.Position = 0;
-                bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memory;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad; // not a mistake - see below
-                bitmapImage.EndInit();
-                bitmap.Dispose();
-            }
-            // Why BitmapCacheOption.OnLoad?
-            // It seems counter intuitive, but this flag has two effects:
-            // It enables caching if caching is possible, and it causes the load to happen at EndInit().
-            // In our case caching is impossible, so all it does it cause the load to happen immediately.
-
+            if(Width == 0 || Height == 0) 
+                return null;
+            var imageSource = Document.Render(PageIndex, (int)Width, (int)Height, dpi, dpi, rotation, flags);
             Dispatcher.Invoke(() =>
             {
-                image.Source = bitmapImage;
+                image.Source = imageSource;
+                canvas.Children.Clear();
+                var markers = Renderer.Markers.Where(m => m.Page == PageIndex);
+                foreach (var marker in markers)
+                {
+                    var uiElements = marker.Draw(this);
+                    foreach(var uiElement in uiElements)
+                        canvas.Children.Add(uiElement);
+                }
             });
             IsRendered = true;
-            return bitmapImage;
+            return imageSource;
         }
 
         public void Clear()
         {
             image.Source = null;
             canvas.Children.Clear();
+            StopBlinking();
             IsRendered = false;
+        }
+
+        public void HighlightRegion(Point[] bounds)
+        {
+            var rect = BoundsToFrame(bounds);
+            blinkRectangle.Margin = new Thickness(rect.Left, rect.Top, Width - rect.Right, Height - rect.Bottom);
+            blinkRectangle.BringIntoView();
+            StartBlinking();
+        }
+
+        private void StartBlinking()
+        {
+            StopBlinking();
+            var board = (Storyboard)FindResource("blinkAnimation");
+            board.Begin();
+        }
+        private void StopBlinking()
+        {
+            var board = (Storyboard)FindResource("blinkAnimation");
+            board.Stop();
+            blinkRectangle.Opacity = 0;
+        }
+
+        public Rect BoundsToFrame(Point[] bounds)
+        {
+            var pageSize = Document.GetPageSize(PageIndex);
+            return new Rect(
+                Math.Min(bounds[0].X, bounds[1].X) / pageSize.Width * Width,
+                Height - Math.Max(bounds[0].Y, bounds[1].Y) / pageSize.Height * Height,
+                Math.Abs(bounds[1].X - bounds[0].X) / pageSize.Width * Width,
+                Math.Abs(bounds[1].Y - bounds[0].Y) / pageSize.Height * Height);
+        }
+        public Point[] BoundsFromFrame(Rect rect)
+        {
+            var pageSize = Document.GetPageSize(PageIndex);
+            return new[]
+            {
+                new Point(rect.Left / Width * pageSize.Width, pageSize.Height - rect.Bottom / Height * pageSize.Height),
+                new Point(rect.Right / Width * pageSize.Width, pageSize.Height - rect.Top / Height * pageSize.Height),
+            };
         }
     }
 }
