@@ -4,14 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
 using Image = System.Windows.Controls.Image;
 
 namespace PdfiumViewer
@@ -53,7 +51,6 @@ namespace PdfiumViewer
         }
 
         public event EventHandler<int> PageChanged;
-        public event EventHandler MouseClick;
         public const double DefaultZoomMin = 0.1;
         public const double DefaultZoomMax = 5;
         public const double DefaultZoomFactor = 1.2;
@@ -160,12 +157,6 @@ namespace PdfiumViewer
 
                 GotoPage(PageNo);
             }
-        }
-
-        protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
-        {
-            base.OnMouseLeftButtonDown(e);
-            MouseClick?.Invoke(this, EventArgs.Empty);
         }
         protected void OnFlagsChanged()
         {

@@ -58,12 +58,17 @@ namespace PdfiumViewer.Core
             {
                 image.Source = imageSource;
                 canvas.Children.Clear();
-                var markers = Renderer.Markers.Where(m => m.Page == PageIndex);
+                var markers = Renderer.Markers.Get(PageIndex);
                 foreach (var marker in markers)
                 {
-                    var uiElements = marker.Draw(this);
-                    foreach(var uiElement in uiElements)
-                        canvas.Children.Add(uiElement);
+                    var elements = marker.Draw(this);
+                    foreach(var element in elements)
+                    {
+                        if(element.Parent is Panel panel)
+                            panel.Children.Remove(element);
+                        element.Tag = marker;
+                        canvas.Children.Add(element);
+                    }
                 }
             });
             IsRendered = true;
@@ -116,6 +121,15 @@ namespace PdfiumViewer.Core
                 new Point(rect.Left / Width * pageSize.Width, pageSize.Height - rect.Bottom / Height * pageSize.Height),
                 new Point(rect.Right / Width * pageSize.Width, pageSize.Height - rect.Top / Height * pageSize.Height),
             };
+        }
+
+        protected override void OnPreviewMouseUp(MouseButtonEventArgs e)
+        {
+            base.OnPreviewMouseUp(e);
+
+            if (e.Handled)
+                return;
+
         }
     }
 }
