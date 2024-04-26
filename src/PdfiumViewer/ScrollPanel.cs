@@ -158,7 +158,6 @@ namespace PdfiumViewer
                     Panel.Children.Add(Frames[i]);
                 }
 
-                GC.Collect();
                 GotoPage(PageNo);
             }
         }
@@ -200,7 +199,6 @@ namespace PdfiumViewer
                 frame.Height = height;
                 frame.Source = bitmapImage;
             });
-            GC.Collect();
             return bitmapImage;
         }
         protected Size CalculatePageSize(int? page = null)
@@ -242,7 +240,6 @@ namespace PdfiumViewer
                     frame.Source = null;
                 }
             }
-            GC.Collect();
         }
         protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
         {

@@ -65,7 +65,6 @@ namespace PdfiumViewer
             Frames = null;
             _markers = null;
             Panel.Children.Clear();
-            GC.Collect();
         }
         public void ClockwiseRotate()
         {
@@ -261,7 +260,6 @@ namespace PdfiumViewer
                 base.Dispose(true);
                 Dispatcher.Invoke(UnLoad);
                 GC.SuppressFinalize(this);
-                GC.Collect();
             }
         }
 
