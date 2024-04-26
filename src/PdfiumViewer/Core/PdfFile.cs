@@ -78,7 +78,7 @@ namespace PdfiumViewer.Core
         {
             return NativeMethods.FPDF_GetPageCount(_document);
         }
-        public PdfPageLinks GetPageLinks(int pageNumber, Size pageSize)
+        public IReadOnlyList<PdfPageLink> GetPageLinks(int pageNumber)
         {
             if (_disposed)
                 throw new ObjectDisposedException(GetType().Name);
@@ -122,7 +122,7 @@ namespace PdfiumViewer.Core
                 }
             }
 
-            return new PdfPageLinks(links);
+            return links;
         }
 
         public List<SizeF> GetPDFDocInfo()

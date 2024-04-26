@@ -87,9 +87,9 @@ namespace PdfiumViewer
             return Document.CreatePrintDocument(settings);
         }
 
-        public PdfPageLinks GetPageLinks(int page, Size size)
+        public IReadOnlyList<PdfPageLink> GetPageLinks(int page)
         {
-            return Document.GetPageLinks(page, size);
+            return Document.GetPageLinks(page);
         }
 
         public void DeletePage(int page)
@@ -150,12 +150,23 @@ namespace PdfiumViewer
             {
                 PageNo = page;
                 CurrentPageSize = CalculatePageSize(page);
-
-                RenderPage(Frame1, page, CurrentPageSize.Width, CurrentPageSize.Height);
+                if(Frame1 != null)
+                {
+                    Frame1.Width = CurrentPageSize.Width;
+                    Frame1.Height = CurrentPageSize.Height;
+                    Frame1.SetPage(page);
+                    Frame1.Render(Dpi, Rotate, Flags);
+                }
 
                 if (PagesDisplayMode == PdfViewerPagesDisplayMode.BookMode && page + 1 < Document.PageCount)
                 {
-                    RenderPage(Frame2, page + 1, CurrentPageSize.Width, CurrentPageSize.Height);
+                    if (Frame2 != null)
+                    {
+                        Frame2.Width = CurrentPageSize.Width;
+                        Frame2.Height = CurrentPageSize.Height;
+                        Frame2.SetPage(page + 1);
+                        Frame2.Render(Dpi, Rotate, Flags);
+                    }
                 }
 
                 ScrollToPage(PageNo);

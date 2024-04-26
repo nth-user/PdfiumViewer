@@ -175,9 +175,8 @@ namespace PdfiumViewer
         /// Returns all links on the PDF page.
         /// </summary>
         /// <param name="page">The page to get the links for.</param>
-        /// <param name="size">The size of the page.</param>
         /// <returns>A collection with the links on the page.</returns>
-        PdfPageLinks GetPageLinks(int page, Size size);
+        IReadOnlyList<PdfPageLink> GetPageLinks(int page);
 
         /// <summary>
         /// Delete the page from the PDF document.
