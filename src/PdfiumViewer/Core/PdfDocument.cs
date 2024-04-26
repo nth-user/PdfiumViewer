@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
-using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.IO;
 using System.Windows.Interop;
@@ -11,6 +10,7 @@ using PdfiumViewer.Drawing;
 using PdfiumViewer.Enums;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
+using System.Runtime.InteropServices;
 
 namespace PdfiumViewer.Core
 {
@@ -268,6 +268,9 @@ namespace PdfiumViewer.Core
             return Render(page, width, height, dpiX, dpiY, 0, flags);
         }
 
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
         /// <summary>
         /// Renders a page of the PDF document to an image.
         /// </summary>
@@ -289,16 +292,13 @@ namespace PdfiumViewer.Core
                 width = width * (int)dpiX / 72;
                 height = height * (int)dpiY / 72;
             }
-
-            var bitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            bitmap.SetResolution(dpiX, dpiY);
-
-            var data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, width, height), ImageLockMode.ReadWrite, bitmap.PixelFormat);
-
+            // Create byte array to hold image data
+            byte[] imageData = new byte[width * height * 4]; // Assuming 32bpp ARGB format
+            GCHandle pinnedArray = GCHandle.Alloc(imageData, GCHandleType.Pinned);
+            IntPtr pointer = pinnedArray.AddrOfPinnedObject();
             try
             {
-                var handle = NativeMethods.FPDFBitmap_CreateEx(width, height, 4, data.Scan0, width * 4);
-
+                var handle = NativeMethods.FPDFBitmap_CreateEx(width, height, 4, pointer, width * 4);
                 try
                 {
                     var background = (flags & PdfRenderFlags.Transparent) == 0 ? 0xFFFFFFFF : 0x00FFFFFF;
@@ -322,19 +322,22 @@ namespace PdfiumViewer.Core
                 {
                     NativeMethods.FPDFBitmap_Destroy(handle);
                 }
+                var bitmapSource = BitmapSource.Create(
+                    width,
+                    height,
+                    dpiX,
+                    dpiY,
+                    PixelFormats.Bgra32,
+                    null,
+                    imageData,
+                    width * 4);
+                bitmapSource.Freeze();
+                return bitmapSource;
             }
             finally
             {
-                bitmap.UnlockBits(data);
+                pinnedArray.Free();
             }
-
-            // Convert System.Drawing.Bitmap to System.Windows.Media.Imaging.BitmapSource
-            var bitmapSource = Imaging.CreateBitmapSourceFromHBitmap(bitmap.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-
-            // Clean up
-            bitmap.Dispose();
-
-            return bitmapSource;
         }
 
         private NativeMethods.FPDF FlagsToFPDFFlags(PdfRenderFlags flags)
